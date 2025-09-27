@@ -2,12 +2,26 @@
 
 ## Introduction
 
+This repository is designed to showcases a Golang REST API.
+This project utilises: 
+- Cobra-CLI. To run the project
+- Uber-Fx. To manage dependencies
+- MySQL. As the database
+
+This REST API has 3 endpoints.
+- POST `/todos`
+- PATCH `/todos`
+- GET `/todos`
+
 ## Description
+
+### Running project
 
 ## Requirements
 
-- [ ] Setup GitHub environment
-  - [ ] init project
+- [x] Setup GitHub environment
+  - [x] init project
+  - [x] go mod init
 
 - [ ] Cobra setup
   - [ ] setup
