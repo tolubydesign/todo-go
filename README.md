@@ -1,0 +1,61 @@
+# TODO Golang API
+
+## Introduction
+
+## Description
+
+## Requirements
+
+- [ ] Setup GitHub environment
+  - [ ] init project
+
+- [ ] Cobra setup
+  - [ ] setup
+  - [ ] run api command
+  - [ ] run migrate command
+- [ ] Uber-Fx
+  - [ ] Setup
+
+- [ ] Docker
+  - [ ] Create docker compose file for running MySQL database
+  - [ ] create docker file to build project
+  - [ ] create docker file to run project
+  - [ ] Dockerize MySQL database
+  - [ ] Dockerize running Golang
+  - [ ] Dockerize redis database for logging
+
+- [ ] Development
+  - [ ] GET endpoint
+  - [ ] PATCH endpoint
+  - [ ] PUT endpoint
+
+- [ ] Tests
+  - [ ] Create test files for api
+  - [ ] Create docker file to run test files
+
+- [ ] Documentation
+  - [ ] doc how to run project
+  - [ ] doc reasoning
+   - [ ] folder structure
+
+- [ ] CI
+  - [ ] create git workflow folder 
+
+## Thoughts Throughout Coding
+
+- Are there aspects of this work that I don't know yet? (yes)
+  - resolve by researching
+- How best to handle git branching?
+  - separate things by features and create a branch for each feature that you need to implement. 
+- How should the database look, column, and names?
+- Can i use nodemon (npm) to run the command for development?
+  - ask
+- Is there an expectation for me to use AI? [ I wish to use as little AI as possible, I have not issue with using ai. I want to treat this test as a learning process. ] 
+  - ask
+- The doc appears to be requiring the creation of a REST API. Am I correct in that assumption? [ There is a GET POST and PATCH endpoint specified. Which answers my question but confirm ]
+  - ask
+- Is a swagger document expected, as an end-result of this work?
+  - ask
+- Do i want to require `api-key`'s
+  - might be overkill. 
+- Which resource to use to create the api
