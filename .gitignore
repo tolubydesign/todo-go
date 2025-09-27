@@ -1,0 +1,79 @@
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+
+# databases
+/minio_storage
+/postgres_database
+/_minio_storage
+/_postgres_database
+
+# compiled output
+/dist
+/tmp
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+# local env files
+.env*.local
+.env*.production
+.env*.development
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Python environment
+.venv
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+
+# Built project location
+/bin
+build
+angular-story-backend
+/docker
+
+# Hide any file base on how the filename starts
+false.*
+
+# AWS SAM
+/.aws-sam
+env.json
+env.*.json
+samconfig.toml
+.aws-sam/build.toml
+
+# keys
+*.pem
+!*-example.pem
+
+# temporary files
+/temp
+*.temp.*
