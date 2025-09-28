@@ -17,15 +17,49 @@ This REST API has 3 endpoints.
 
 ## Description
 
+This project was built using the already available golang package "net/http".\
+I have experience building api using `gofiber` but I know that the `net/http` in the last few years has made large improvements.\
+Additionally, I want to know how to better utilise it.
+
 ### Running project
 
-First. Run the docker compose file. This folder runs the __MySQL__ database needed to make todo changes.
+First. Run the docker compose file. This folder runs the __MySQL__ database needed to make todo changes.\
+Second. Create a copy of the `.env.example`. Move it into a `.env folder`
 
+__Check Command__\
+To check events you can use the curl command.\
+The commands are as follows:
+
+GET Request
+```sh
+curl -X GET "http://localhost:8080/todos?page=1&limit=20" \
+--include \
+--header "Content-Type: application/json"
+```
+
+POST Request
+```sh
+curl -X POST "http://localhost:8080/todos" \
+--include \
+--header "Content-Type: application/json" \ 
+-d '{"task": "task information"}'
+```
+
+PATCH Request
+```sh
+curl -X PATCH "http://localhost:8080/todos" \
+--include \
+--header "Content-Type: application/json" \ 
+-d '{id: "id-number", "task": "updated task information"}'
+```
+
+___
 You can run the the server via the command:
 
 ```sh
-$ go run main.go run --port 8080
+$ go run main.go run
 ```
+Note, the port values is passed through the local `.env` file.
 
 You can run the migration command via the command:
 
@@ -33,7 +67,7 @@ You can run the migration command via the command:
 $ go run main.go migrate
 ```
 
-## Requirements
+## Requirements/Tasks
 
 - [x] Setup GitHub environment
 
@@ -43,7 +77,7 @@ $ go run main.go migrate
 - [x] Cobra setup
 
   - [x] setup
-  - [ ] run api command
+  - [x] run api command
   - [ ] run migrate command
 
 - [x] Uber-Fx
@@ -63,8 +97,18 @@ $ go run main.go migrate
 - [ ] Development
 
   - [ ] GET endpoint
+    - [ ] setup
+    - [ ] connect with mysql database
+    - [ ] paginate things
   - [ ] PATCH endpoint
+    - [ ] setup
+    - [ ] connect with mysql database
   - [ ] PUT endpoint
+    - [ ] setup
+    - [ ] connect with mysql database
+
+  - [ ] Error handling
+  - [ ] Reusable 
 
 - [ ] Tests
 

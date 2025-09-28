@@ -1,10 +1,6 @@
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 
 # databases
-/minio_storage
-/postgres_database
-/_minio_storage
-/_postgres_database
 
 # compiled output
 /dist
@@ -34,6 +30,7 @@
 *.so
 *.dylib
 # local env files
+.env
 .env*.local
 .env*.production
 .env*.development
