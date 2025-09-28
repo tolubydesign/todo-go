@@ -1,0 +1,18 @@
+services:
+  db:
+    # select minor version to prevent
+    image: mysql:8.0
+    container_name: mysql-todo-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: todo
+    ports:
+      # custom port. local machine already uses this port
+      - "3360:3306"
+    volumes:
+      - $PWD/docker/dynamodb:/var/lib/mysql
+
+volumes:
+  db_data:
+    driver: local
