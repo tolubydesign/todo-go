@@ -58,17 +58,12 @@ func GetConfiguration() (*Config, error) {
 
 // Generate a custom configuration object based on variables passed.
 // This function does not effect the configuration singleton
-func GenerateConfiguration(config *Config) *Config {
-	var generatedConfiguration *Config
+func GenerateConfiguration(config *Config) *Configuration {
 	port := config.Configuration.Port
 	environment := config.Configuration.Environment
 
-	generatedConfiguration = &Config{
-		Configuration: &Configuration{
-			Environment: environment,
-			Port:        port,
-		},
+	return &Configuration{
+		Environment: environment,
+		Port:        port,
 	}
-
-	return generatedConfiguration
 }
