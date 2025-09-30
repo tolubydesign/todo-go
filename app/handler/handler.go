@@ -4,23 +4,26 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/tolubydesign/todo-go/app/db"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
-type EchoHandler struct {
-	log *zap.Logger
+type RequestBody struct {
+	Todos []db.ToDo `json:"todo"`
 }
 
-func NewEchoHandler(log *zap.Logger) *EchoHandler {
-	return &EchoHandler{log: log}
+type Handler struct {
+	service *db.ToDoService
+	logging *zap.Logger
 }
-
-type Handler struct{}
 
 // Handler instance.
-func HandlerInstance() *Handler {
-	return &Handler{}
+func NewHandler(service *db.ToDoService, logging *zap.Logger) *Handler {
+	return &Handler{
+		service: service,
+		logging: logging,
+	}
 }
 
 // MuxParams defines the dependencies for the HTTP router.
@@ -30,15 +33,15 @@ type MuxParams struct {
 }
 
 // ProvideMux registers the HTTP handler and returns a *http.ServeMux.
-func ProvideMux(p MuxParams) *http.ServeMux {
+func ProvideMux(p MuxParams, service *db.ToDoService, logging *zap.Logger) *http.ServeMux {
 	log.Println("func ProvideMux.")
 	mux := http.NewServeMux()
 
 	// Register the handler method
 	// mux.Handle("/", &Handler{})
-	mux.HandleFunc("GET /todos", HandlerInstance().GetHandler)
-	mux.HandleFunc("POST /todos", HandlerInstance().PostHandler)
-	mux.HandleFunc("PATCH /todos", HandlerInstance().PatchHandler)
+	mux.HandleFunc("GET /todos", NewHandler(service, logging).GetHandler)
+	mux.HandleFunc("POST /todos", NewHandler(service, logging).PostHandler)
+	mux.HandleFunc("PATCH /todos", NewHandler(service, logging).PatchHandler)
 
 	log.Println("HTTP handlers registered.")
 	return mux

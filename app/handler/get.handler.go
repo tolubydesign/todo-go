@@ -5,19 +5,22 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	// Log event
+	h.logging.Info("GET Request")
 
-	// connect with mysql database
+	// NOTE. through the Handler and uber-fx (insane) we already have access to logging and the ToDo Service
 
 	// handle get with pagination
 	page := r.URL.Query().Get("page")
 	limit := r.URL.Query().Get("limit")
 	if page != "" || limit != "" {
-		fmt.Println("GET param page:", page)
-		fmt.Println("GET param limit:", limit)
+		h.logging.Info("GET param page:", zap.String("page", page))
+		h.logging.Info("GET param limit:", zap.String("limit", limit))
 		// ... process it, will be the first (only) if multiple were given
 		// note: if they pass in like ?param1=&param2= param1 will also be "" :|
 	}

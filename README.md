@@ -39,10 +39,10 @@ curl -X GET "http://localhost:8080/todos?page=1&limit=20" \
 
 POST Request
 ```sh
-curl -X POST "http://localhost:8080/todos" \
+curl -X POST "http://localhost:8080/todos" \ 
 --include \
---header "Content-Type: application/json" \ 
--d '{"task": "task information"}'
+--header "Content-Type: application/json" \
+-d '{ "todo": [ { "task": "1 todo task", "description": "1 todo description", "completed": false }, { "task": "2 todo task", "description": "2 todo description", "completed": false } ] }'
 ```
 
 PATCH Request
@@ -83,29 +83,32 @@ $ go run main.go migrate
 - [x] Uber-Fx
 
   - [x] Setup
-  - [ ] implement with code
+  - [x] implement with code
 
 - [ ] Docker
 
   - [ ] Create docker compose file for running MySQL database
   - [ ] create docker file to build project
   - [ ] create docker file to run project
-  - [ ] Dockerize MySQL database
+  - [x] Dockerize MySQL database
+    - [ ] add due_date RFC3339 timestamp to todo table
   - [ ] Dockerize running Golang
-  - [ ] Dockerize redis database for logging
+  - [ ] ~~Dockerize redis database for logging~~
 
 - [ ] Development
 
   - [ ] GET endpoint
-    - [ ] setup
+    - [x] setup
     - [ ] connect with mysql database
     - [ ] paginate things
   - [ ] PATCH endpoint
-    - [ ] setup
+    - [x] setup
     - [ ] connect with mysql database
-  - [ ] PUT endpoint
-    - [ ] setup
-    - [ ] connect with mysql database
+  - [ ] POST endpoint
+    - [x] setup
+    - [x] connect with mysql database
+    - [ ] add due_date RFC3339 timestamp to todo table
+    - [x] remove completed bool
 
   - [ ] Error handling
   - [ ] Reusable 
@@ -143,6 +146,9 @@ $ go run main.go migrate
   - might be overkill.
 - Which resource to use to create the api
 - A migration is a requirement. What kind of migration is expected here? A up and down migration? A migration to another server?
+- Was taken back by uber-fx at first but im starting to understand it more. Haven't used it before. Same goes for cobra. Cobra is a lot more straight forward.
+- Choose to add `github.com/golang-migrate/` to project. Seems straightforward. Documentation is decent
+- Haven't migrated code before. I know I can use cobra-cli to perform the task. Just need a good way to accept `migrate up` and `migrate down` commands
 
 ### Issues Faced
 

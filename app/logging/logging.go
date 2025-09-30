@@ -1,27 +1,18 @@
 package logging
 
 import (
-	"fmt"
-	"log"
-
-	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
 // Logger is a simple logging interface
-type Logging struct{}
+type Log struct{}
 
-func Logger() *Logging {
-	return &Logging{}
+func NewLogger() *Log {
+	return &Log{}
 }
 
-// Logging events.
-func (l *Logging) Event(d ...any) {
-	name := "logging:"
-	s := fmt.Sprint(d...)
-	message := fmt.Sprintf("%s %s", name, s)
-
-	log.Println(message)
+// NewLogger creates a new Zap logger.
+func ZapLogger() (*zap.Logger, error) {
+	// For production, use zap.NewProduction()
+	return zap.NewDevelopment()
 }
-
-// Module groups the Logger constructor for Fx
-var Module = fx.Provide(Logger)

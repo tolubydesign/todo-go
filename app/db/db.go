@@ -1,0 +1,250 @@
+package db
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"log"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+	"go.uber.org/fx"
+	"go.uber.org/zap"
+
+	_ "github.com/golang-migrate/migrate/v4/database/mysql" // MySQL driver
+	_ "github.com/golang-migrate/migrate/v4/source/file"    // File source for migrations
+	configuration "github.com/tolubydesign/todo-go/app/config"
+)
+
+// Config holds MySQL connection details. This would typically come from environment variables or a config file.
+type Config struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Database string
+}
+
+// Setup and pass the configuration variable necessary to connect to database
+func DatabaseConfig(logging *zap.Logger) (Config, error) {
+	// NOTE.Learning that the zap logger is provided through uber-fx. Like magic. And through uber-fx, im able to provide db.Config
+	c, err := configuration.GetConfiguration()
+	logging.Info("DatabaseConfig called")
+	if err != nil {
+		logging.Warn("unable to retrieve environment variables", zap.String("error", err.Error()))
+		panic(err)
+	}
+
+	dbCfg := Config{
+		Host:     c.Configuration.Mysql.SqlHost,
+		Port:     c.Configuration.Mysql.SqlPort,
+		User:     c.Configuration.Mysql.SqlUser,
+		Password: c.Configuration.Mysql.SqlPassword,
+		Database: c.Configuration.Mysql.SqlDatabase,
+	}
+
+	if dbCfg.Host == "" {
+		// Provide a fallback or return an error if DSN is mandatory
+		return Config{}, errors.New("MYSQL_HOST environment variable not provided")
+	}
+	// TODO: additional error responses. keep user int the loop
+
+	logging.Info("configuration set")
+	return dbCfg, nil
+}
+
+func DatabaseSourceName(cfg Config) string {
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?tls=skip-verify&charset=utf8mb4&parseTime=True&loc=Local", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database) // root:yourpassword@tcp(127.0.0.1:3306)/test
+	return dsn
+}
+
+// MySQLConnection is the Fx Provider function for the database connection.
+func MySQLConnection(cfg Config, lc fx.Lifecycle) (*sql.DB, error) {
+	log.Println("MySQL Connection")
+	// Format the DSN (Data Source Name)
+	// dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database)
+	// NOTE. shouldn't connect with a no-verify. Issue with local machine. Pressed for time.
+	// dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?tls=skip-verify", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database)
+	dsn := DatabaseSourceName(cfg)
+	// dsn := fmt.Sprintf("root:password@tcp(%s:%d)/%s?tls=skip-verify", cfg.Host, cfg.Port, cfg.Database)
+
+	// setup := mysql.NewConfig()
+	// setup.User = cfg.User
+	// setup.Passwd = cfg.Password
+	// // setup.Net = "tcp"
+	// setup.Addr = "127.0.0.1:3360" // fmt.Sprintf("%s:%d", cfg.Host, cfg.Port) // "127.0.0.1:3306"
+	// setup.DBName = cfg.Database
+
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		// return nil, fmt.Errorf("failed to open database connection: %w", err)
+		msg := fmt.Sprintf("failed to open database connection: %s", err.Error())
+		return nil, errors.New(msg)
+	}
+
+	// Ping the database to ensure connection is live
+	if err := db.Ping(); err != nil {
+		db.Close() // Close on failed ping
+		// return nil, fmt.Errorf("failed to ping database: %w", err)
+		msg := fmt.Sprintf("failed to open database connection: %s", err.Error())
+		return nil, errors.New(msg)
+	}
+
+	log.Println("MySQL Connection. database pinged")
+	// logging.Logger().Event("MySQL Connection. database pinged", "info")
+
+	// Fx Lifecycle Hook to gracefully close the connection
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			log.Println("Connecting to MySQL...")
+			return db.PingContext(ctx)
+		},
+		OnStop: func(ctx context.Context) error {
+			fmt.Println("Closing MySQL connection...")
+			return db.Close()
+		},
+	})
+
+	fmt.Println("Successfully connected to MySQL.")
+	return db, nil
+}
+
+// ToDo is the model used in the service layer for data structuring.
+type ToDo struct {
+	ID          int
+	Task        string
+	Description string
+	Completed   bool
+	Created_at  *time.Time // time.Now()
+}
+
+// ToDoService defines the business logic methods.
+type ToDoService struct {
+	db     *sql.DB
+	logger *zap.Logger
+}
+
+// uber-fx automatically handles resolving sql and zap.
+func NewToDoService(db *sql.DB, logger *zap.Logger) *ToDoService {
+	return &ToDoService{
+		db:     db,
+		logger: logger.Named("ToDoService"),
+	}
+}
+
+// CreateToDo adds new todo with the provided details.
+func (s *ToDoService) CreateToDo(ctx context.Context, task string, description string) (*ToDo, error) {
+	const insertSQL = "INSERT INTO todo (task, description) VALUES (?, ?)"
+
+	// Execute the query
+	result, err := s.db.ExecContext(ctx, insertSQL, task, description)
+	if err != nil {
+		s.logger.Error("Failed to create ToDo item using SQL Exec", zap.Error(err),
+			zap.String("task", task), zap.String("description", description))
+		return nil, fmt.Errorf("database execution error: %w", err)
+	}
+
+	// Get the ID of the newly inserted record
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		s.logger.Warn("Could not retrieve LastInsertId", zap.Error(err))
+	}
+
+	// Construct the ToDo object with the assigned ID
+	t := &ToDo{
+		ID:          int(lastID),
+		Task:        task,
+		Description: description,
+	}
+
+	s.logger.Info("ToDo created successfully via SQL", zap.String("task", task), zap.Int64("id", lastID))
+	return t, nil
+}
+
+// RemoveToDo removes task that match provided id and task from SQL database.
+func (s *ToDoService) RemoveToDo(ctx context.Context, id int, task string) error {
+	const removeSQL = "DELETE FROM todo WHERE id = ? AND email = ?"
+
+	// Execute the query
+	result, err := s.db.ExecContext(ctx, removeSQL, id)
+	if err != nil {
+		s.logger.Error("Failed to create ToDo item using SQL Exec", zap.Error(err),
+			zap.Int("id", id), zap.String("task", task))
+		return fmt.Errorf("database execution error: %w", err)
+	}
+
+	// Check the number of rows affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	s.logger.Info("ToDo removed successfully via SQL", zap.String("task", task), zap.Int64("rows affected", rowsAffected))
+	return nil
+}
+
+// NewDB creates and returns the *sql.DB instance.
+// Using fx.Lifecycle to manage things .
+func NewDB(lc fx.Lifecycle, cfg Config, logger *zap.Logger) (*sql.DB, error) {
+	logger.Info("Attempting to connect to MySQL database using database/sql...")
+	dsn := DatabaseSourceName(cfg)
+	// Open the standard database connection. The driver name must match the one used in the import above.
+	// db, err := sql.Open("mysql", cfg.DSN)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database handle: %w", err)
+	}
+
+	// Set connection pool settings (best practice)
+	db.SetMaxIdleConns(10)
+	db.SetMaxOpenConns(100)
+	db.SetConnMaxLifetime(time.Hour)
+
+	// Ping the database to verify the connection is active
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	logger.Info("Successfully connected to MySQL database.")
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			// A simple CREATE TABLE statement to ensure the necessary table exists.
+			const createTableSQL = `
+				CREATE TABLE IF NOT EXISTS todo (
+					id INT AUTO_INCREMENT PRIMARY KEY,
+					task VARCHAR(255) NOT NULL,
+					description TEXT,
+					-- due_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+					created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				);`
+
+			logger.Info("Attempting to create table todo")
+			_, err := db.ExecContext(ctx, createTableSQL)
+			if err != nil {
+				return fmt.Errorf("failed to create products table: %w", err)
+			}
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			logger.Info("Closing database connection.")
+			return db.Close()
+		},
+	})
+
+	return db, nil
+}
+
+// Export the NewToDoService constructor for FX.
+var ServiceModule = fx.Options(
+	fx.Provide(NewToDoService),
+)
+
+// DatabaseModule exports the NewDB constructor for FX.
+var DatabaseModule = fx.Options(
+	fx.Provide(NewDB),
+)
