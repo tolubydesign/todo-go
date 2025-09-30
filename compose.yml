@@ -11,7 +11,7 @@ services:
       # custom port. local machine already uses this port
       - "3360:3306"
     volumes:
-      - $PWD/docker/dynamodb:/var/lib/mysql
+      - $PWD/docker/mysql:/var/lib/mysql
 
 volumes:
   db_data:
