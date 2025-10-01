@@ -1,19 +1,10 @@
-CREATE TABLE IF NOT EXISTS todo (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  task VARCHAR(255) NOT NULL,
-  description TEXT,
-  due_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  -- completed BOOLEAN NOT NULL DEFAULT 0
-);
-
--- Add initial data of +100 todo
-INSERT INTO todo (task, description) VALUES 
+INSERT INTO todo (task, task_description)
+VALUES
 ('Buy Bread', 'Need more bread.'),
 ('Buy Butter', 'Need more butter.'),
 ('Go Outside', 'Outside'),
 ('Find Window', ''),
-('Schedule Dentist', 'Call the dentist to schedule a cleaning.')
+('Schedule Dentist', 'Call the dentist to schedule a cleaning.'),
 ('Todo #1: Plan project strategy', 'Define scope, milestones, and resource allocation.'),
 ('Todo #2: Set up development environment', 'Install IDE, Go, and necessary dependencies.'),
 ('Todo #3: Initialize Cobra CLI', 'Run cobra-cli init and set up the root command.'),
@@ -33,7 +24,7 @@ INSERT INTO todo (task, description) VALUES
 ('Todo #17: Optimize database queries', 'Analyze slow logs and add necessary indexes.'),
 ('Todo #18: Deploy to staging environment', 'Push the latest build to the staging server.'),
 ('Todo #19: Monitor application metrics', 'Check Prometheus/Grafana dashboard for initial load.'),
-('Todo #20: Attend team stand-up meeting', 'Discuss yesterday\'s progress and today\'s plan.')
+('Todo #20: Attend team stand-up meeting', 'Discuss yesterday\'s progress and today\'s plan.'),
 ('Todo #1: Task for project phase 1', 'Generated task detail for testing data volume: Item 1 of 100.'),
 ('Todo #2: Task for project phase 1', 'Generated task detail for testing data volume: Item 2 of 100.'),
 ('Todo #3: Task for project phase 1', 'Generated task detail for testing data volume: Item 3 of 100.'),
