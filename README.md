@@ -206,3 +206,7 @@ Noting issues I found along the way.
 - Migration command functionality. As it stands, its fairly scuffed.
 - Understanding of Uber-fx. Took some time to get my head around it. Read the docs. I don't fully understand what its capable of by it is a useful module
 - Understanding of Cobra-CLI. I get it. Im going to use it moving forward for other projects.
+
+## Closing Thoughts.
+
+The project is incomplete but I can build on this given time
