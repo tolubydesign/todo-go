@@ -1,16 +1,24 @@
 package handler
 
 import (
-	"log"
 	"net/http"
+	"time"
 
 	"github.com/tolubydesign/todo-go/app/db"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
+type RequestBodyToDo struct {
+	ID          int        `json:"id,omitempty"`
+	Task        string     `json:"task,omitempty"`
+	Description string     `json:"description,omitempty"`
+	Due_date    string     `json:"due_date,omitempty"`
+	Created_at  *time.Time `json:"created_at,omitempty"`
+}
+
 type RequestBody struct {
-	Todos []db.ToDo `json:"todo"`
+	Todos []RequestBodyToDo `json:"todos"`
 }
 
 type Handler struct {
@@ -34,15 +42,12 @@ type MuxParams struct {
 
 // ProvideMux registers the HTTP handler and returns a *http.ServeMux.
 func ProvideMux(p MuxParams, service *db.ToDoService, logging *zap.Logger) *http.ServeMux {
-	log.Println("func ProvideMux.")
 	mux := http.NewServeMux()
 
 	// Register the handler method
-	// mux.Handle("/", &Handler{})
 	mux.HandleFunc("GET /todos", NewHandler(service, logging).GetHandler)
 	mux.HandleFunc("POST /todos", NewHandler(service, logging).PostHandler)
 	mux.HandleFunc("PATCH /todos", NewHandler(service, logging).PatchHandler)
-
-	log.Println("HTTP handlers registered.")
+	mux.HandleFunc("DELETE /todos", NewHandler(service, logging).DeleteHandler)
 	return mux
 }
