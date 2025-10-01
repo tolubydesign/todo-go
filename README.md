@@ -23,49 +23,72 @@ Additionally, I want to know how to better utilise it.
 
 ### Running project
 
-First. Run the docker compose file. This folder runs the __MySQL__ database needed to make todo changes.\
-Second. Create a copy of the `.env.example`. Move it into a `.env folder`
+First. Just in case, install the necessary modules needed to run the project locally. \
+Second. Create a copy of the `.env.example` file. Move the contents to another `.env` file. \
+Third. Run the docker compose file. This runs the __MySQL__ database. \
+Forth. Run the `migrate up` command. This creates the `todo` table and populates the database. You can run the `migrate down` command to remove all data from the database. \
+Lastly. Run the `run` command. 8080 is the local open port.
 
 __Check Command__\
-To check events you can use the curl command.\
+To check events, you can use the curl command.\
 The commands are as follows:
 
 GET Request
 ```sh
 curl -X GET "http://localhost:8080/todos?page=1&limit=20" \
---include \
---header "Content-Type: application/json"
+    --include \
+    --header "Content-Type: application/json"
 ```
 
 POST Request
 ```sh
-curl -X POST "http://localhost:8080/todos" \ 
---include \
---header "Content-Type: application/json" \
--d '{ "todo": [ { "task": "1 todo task", "description": "1 todo description", "completed": false }, { "task": "2 todo task", "description": "2 todo description", "completed": false } ] }'
+curl -X POST -H "Content-Type: application/json" -d '{ "todos": [ { "task": "1 todo task", "description": "1 todo description" }, { "task": "2 todo task", "description": "2 todo description" } ] }' "http://localhost:8080/todos"
 ```
 
 PATCH Request
 ```sh
-curl -X PATCH "http://localhost:8080/todos" \
---include \
---header "Content-Type: application/json" \ 
--d '{id: "id-number", "task": "updated task information"}'
+curl -X PATCH -H "Content-Type: application/json" -d '{ "todos": [ { "id": 100, "task": "foo task", "description": "foo description" }, { "id": 101, "task": "foo task" }, { "id": 103, "description": "foop doop" } ] }' "http://localhost:8080/todos"
+# curl -X PATCH "http://localhost:8080/todos" \
+#     --include \
+#     --header "Content-Type: application/json" \ 
+#     -d '{ "todos": [ { "id": "id-number", "task": "updated task information", "description": "updated description information" }, { "id": "id-number", "task": "updated task information", "description": "updated description information" } ] }'
+```
+
+[Incomplete] DELETE Request 
+```sh
+curl -X DELETE "http://localhost:8080/todos" \
+    --include \
+    --header "Content-Type: application/json" \ 
+    -d '{ "todos": [ { "id": "number" }, { "id": "number" } ] }'
 ```
 
 ___
-You can run the the server via the command:
 
+### Run API
+
+You can run the the server via the command:
 ```sh
 $ go run main.go run
 ```
+
+The API is accessible on the 8080 port. 
+
 Note, the port values is passed through the local `.env` file.
 
-You can run the migration command via the command:
+### Migrating Database
 
+Using cobra-cli and uber-fx and golang-migration you can migrate the database UP and DOWN.
+
+You can run the UP migrate via the command: 
 ```sh
-$ go run main.go migrate
+$ go run main.go migrate up
 ```
+
+You can run the UP migrate via the command: 
+```sh
+$ go run main.go migrate down
+```
+
 
 ## Requirements/Tasks
 
@@ -78,7 +101,7 @@ $ go run main.go migrate
 
   - [x] setup
   - [x] run api command
-  - [ ] run migrate command
+  - [x] run migrate command
 
 - [x] Uber-Fx
 
@@ -87,31 +110,41 @@ $ go run main.go migrate
 
 - [ ] Docker
 
-  - [ ] Create docker compose file for running MySQL database
-  - [ ] create docker file to build project
+  - [x] Create docker compose file for running MySQL database
+  - [x] create docker file to build project
   - [ ] create docker file to run project
   - [x] Dockerize MySQL database
     - [ ] add due_date RFC3339 timestamp to todo table
-  - [ ] Dockerize running Golang
   - [ ] ~~Dockerize redis database for logging~~
 
 - [ ] Development
 
-  - [ ] GET endpoint
-    - [x] setup
-    - [ ] connect with mysql database
-    - [ ] paginate things
-  - [ ] PATCH endpoint
-    - [x] setup
-    - [ ] connect with mysql database
-  - [ ] POST endpoint
+  - [x] GET endpoint
     - [x] setup
     - [x] connect with mysql database
+    - [x] handle request
+    - [x] paginate things
+  - [x] PATCH endpoint
+    - [x] setup
+    - [x] handle request
+    - [x] connect with mysql database
+  - [x] POST endpoint
+    - [x] setup
+    - [x] connect with mysql database
+    - [x] handle request
     - [ ] add due_date RFC3339 timestamp to todo table
+    - [ ] error handling with task with unknown/not-found id
     - [x] remove completed bool
+  - [ ] DELETE endpoint
+    - [ ] setup
+    - [ ] handle request
+    - [ ] connect with mysql database
+  - [x] Migration 
+    - [x] up migration
+    - [x] down migration
 
   - [ ] Error handling
-  - [ ] Reusable 
+    - [ ] Reusable return functions/struct (better manage request responses)
 
 - [ ] Tests
 
@@ -149,9 +182,27 @@ $ go run main.go migrate
 - Was taken back by uber-fx at first but im starting to understand it more. Haven't used it before. Same goes for cobra. Cobra is a lot more straight forward.
 - Choose to add `github.com/golang-migrate/` to project. Seems straightforward. Documentation is decent
 - Haven't migrated code before. I know I can use cobra-cli to perform the task. Just need a good way to accept `migrate up` and `migrate down` commands
+- No Delete request was mentioned in the task. Will create it regardless
+- Setting up this migration stuff has been a little bit of a headache. Im learning it, little by little.
+  - noticed i need to number the migration `.sql` files.
+- Well played. the word "description" is a reserved sql word.
+- I don't have time to ask, but in the assessment under POST. "Response: A list of todos with their newly created ids". Does that mean return all todos or just the ones created?
+  - Will return the the newly created posts
+- IMPORTANT: due_date parameter doesn't work as of writing.
+- Had to throw away my branching strategy to deliver output
+- IMPORTANT: DELETE /todos endpoint doesn't work as of writing.
+- TODO: Future implementation. change pagination based on limit set by user. So if the limit is 20 and the user is on the 3rd page. (2 x 20) We show 20 items that are after the 39th todo
+- Time is clocking down. I wont be able to create tests. Ill have to do it after project is due.
+- Wont have time but I create the CI pipeline later
+- Docker file is incomplete. it builds but doesnt run. may have to hand in without resolving it
+- Didn't get around to doing the tests.
+- Proper HTTP responses have also not been set.
 
 ### Issues Faced
 
 Noting issues I found along the way.
 
 - Im run arch by the way (joke). Ran into cobra-cli init command issues. Resolution = read the documents.
+- Migration command functionality. As it stands, its fairly scuffed.
+- Understanding of Uber-fx. Took some time to get my head around it. Read the docs. I don't fully understand what its capable of by it is a useful module
+- Understanding of Cobra-CLI. I get it. Im going to use it moving forward for other projects.
