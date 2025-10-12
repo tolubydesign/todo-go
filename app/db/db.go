@@ -177,7 +177,7 @@ func (s *ToDoService) CreateToDo(ctx context.Context, task string, description s
 }
 
 // Update existing todo in the database, with the provided todo details.
-func (s *ToDoService) UpdateToDo(ctx context.Context, id int, task *string, description *string, due_date *string) error {
+func (s *ToDoService) UpdateToDo(ctx context.Context, id *int, task *string, description *string, due_date *string) error {
 	var err error
 	// End result should be "UPDATE todo SET task = ?, task_description = ? WHERE id = ?" if all function parameters are provided
 	params := []string{}
@@ -205,29 +205,29 @@ func (s *ToDoService) UpdateToDo(ctx context.Context, id int, task *string, desc
 
 	updateQuery := fmt.Sprintf("UPDATE todo SET %s WHERE id = ?", strings.Join(params, ", "))
 	args = append(args, id)
-	s.logger.Info("update sql query", zap.String("q", updateQuery))
-	s.logger.Info("arguments", zap.Any("args", args))
+	s.logger.Info("UPDATE SERVICE:", zap.String("query", updateQuery))
+	s.logger.Info("UPDATE SERVICE: arguments", zap.Any("args", args))
 
 	// Execute the query
 	_, err = s.db.ExecContext(ctx, updateQuery, args...)
 	if err != nil {
-		s.logger.Error("Failed to update ToDo item using SQL Exec", zap.Error(err),
-			zap.String("task", *task), zap.String("description", *description), zap.Int("id", id))
+		s.logger.Warn("Failed to update ToDo item using SQL Exec", zap.Error(err),
+			zap.String("task", *task), zap.String("description", *description), zap.Int("id", *id))
 		return fmt.Errorf("database execution error: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // RemoveToDo removes task that match provided id and task from SQL database.
-func (s *ToDoService) RemoveToDo(ctx context.Context, id int, task string) error {
+func (s *ToDoService) RemoveToDo(ctx context.Context, id int) error {
 	const removeSQL = "DELETE FROM todo WHERE id = ?"
 
 	// Execute the query
 	result, err := s.db.ExecContext(ctx, removeSQL, id)
 	if err != nil {
 		s.logger.Error("Failed to create ToDo item using SQL Exec", zap.Error(err),
-			zap.Int("id", id), zap.String("task", task))
+			zap.Int("id", id))
 		return fmt.Errorf("database execution error: %w", err)
 	}
 
@@ -237,7 +237,9 @@ func (s *ToDoService) RemoveToDo(ctx context.Context, id int, task string) error
 		log.Fatal(err)
 	}
 
-	s.logger.Info("ToDo removed successfully via SQL", zap.String("task", task), zap.Int64("rows affected", rowsAffected))
+	if rowsAffected > 0 {
+		s.logger.Info("SQL DELETE: item delete", zap.Int("id", id))
+	}
 	return nil
 }
 
