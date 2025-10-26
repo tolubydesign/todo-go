@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/tolubydesign/todo-go/app/db"
 	"go.uber.org/fx"
@@ -12,17 +11,22 @@ import (
 )
 
 type RequestBodyToDo struct {
+	ID          *int    `json:"id ,omitempty"`
+	Task        string  `json:"task"`
+	Description *string `json:"description ,omitempty"`
+	Due_date    *string `json:"due_date ,omitempty"`
+}
+
+type ResponseBodyToDo struct {
+	// Extends the struct of Request-Body
 	ID *int `json:"id,omitempty"`
-
 	// max length: 255
-	Task        string  `json:"task,omitempty"`
+	Task        string  `json:"task"`
 	Description *string `json:"description,omitempty"`
-
 	// RFC 3339. Example 1985-04-12T23:20:50.52Z | 1996-12-19T16:39:57-08:00
 	Due_date *string `json:"due_date,omitempty"`
-
 	// Created by database. Example 2025-10-01 21:32:50
-	Created_at *time.Time `json:"created_at,omitempty"`
+	Created_at string `json:"created_at,omitempty"`
 }
 
 type RequestBody struct {
@@ -93,7 +97,7 @@ func Response(w http.ResponseWriter, status string, code int, message *string, d
 		res = ReturnResponse{
 			Status:  status,
 			Message: *msg,
-			Data:    nil,
+			Data:    data,
 		}
 	default:
 		w.WriteHeader(http.StatusInternalServerError)

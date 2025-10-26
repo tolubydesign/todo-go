@@ -56,7 +56,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	h.logging.Info("GET: param page:", zap.String("page", page), zap.Int("num", pageNum), zap.String("str", pageStr))
 	h.logging.Info("GET: param limit:", zap.String("limit", limit), zap.Int("num", limitNum), zap.String("str", limitStr))
 
-	var responseToDos []RequestBodyToDo
+	var responseToDos []ResponseBodyToDo
 	opCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
@@ -70,15 +70,21 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, todo := range todos {
-		responseToDos = append(responseToDos, RequestBodyToDo{
+		var ct string
+		if todo.Due_date != nil {
+			ct = todo.Due_date.Format(time.RFC3339)
+		}
+
+		responseToDos = append(responseToDos, ResponseBodyToDo{
 			ID:          &todo.ID,
 			Task:        todo.Task,
 			Description: &todo.Task_description,
+			Due_date:    &ct,
 			// Due_date: time.Now().Format(todo.Due_date), // needs work
 		})
 	}
 
-	response := map[string][]RequestBodyToDo{"todos": responseToDos}
+	response := map[string][]ResponseBodyToDo{"todos": responseToDos}
 	msg := "request complete"
 	// Send a response back to the client
 	Response(w, "successful", http.StatusOK, &msg, response)
