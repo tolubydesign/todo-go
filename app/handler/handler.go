@@ -11,10 +11,10 @@ import (
 )
 
 type RequestBodyToDo struct {
-	ID          *int    `json:"id ,omitempty"`
-	Task        string  `json:"task"`
-	Description *string `json:"description ,omitempty"`
-	Due_date    *string `json:"due_date ,omitempty"`
+	ID          int    `json:"id,omitempty"`
+	Task        string `json:"task"`
+	Description string `json:"description,omitempty"`
+	Due_date    string `json:"due_date,omitempty"`
 }
 
 type ResponseBodyToDo struct {

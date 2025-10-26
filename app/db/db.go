@@ -158,10 +158,11 @@ func (s *ToDoService) CreateToDo(ctx context.Context, task string, description s
 	args = append(args, task)
 
 	// add description param
-	params = append(params, "task_description")
-	args = append(args, description)
+	if len(description) > 0 {
+		params = append(params, "task_description")
+		args = append(args, description)
+	}
 
-	// if due_date != nil && *due_date != "" {
 	if due_date != nil {
 		params = append(params, "due_date")
 		args = append(args, *due_date)
@@ -173,30 +174,29 @@ func (s *ToDoService) CreateToDo(ctx context.Context, task string, description s
 
 	query := fmt.Sprintf("INSERT INTO todo (%s) VALUES (%s)", strings.Join(params, ", "), strings.Join(marks, ", "))
 
-	s.logger.Info("request structure", zap.String("query", query))
+	s.logger.Info("SQL CREATE. request structure", zap.String("query", query), zap.Any("args", args))
 	var date_time time.Time
 	if due_date != nil {
 		date_time = *due_date
 	}
 
 	// Execute the query
-	// result, err := s.db.ExecContext(ctx, insertSQL, task, description)
-	// if err != nil {
-	// 	s.logger.Error("Failed to create ToDo item using SQL Exec", zap.Error(err),
-	// 		zap.String("task", task), zap.String("description", description))
-	// 	return nil, fmt.Errorf("database execution error: %w", err)
-	// }
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		s.logger.Error("Failed to create ToDo item using SQL Exec", zap.Error(err),
+			zap.String("task", task), zap.String("description", description))
+		return nil, fmt.Errorf("database execution error: %w", err)
+	}
 
 	// Get the ID of the newly inserted record
-	// lastID, err := result.LastInsertId()
-	// if err != nil {
-	// 	s.logger.Warn("Could not retrieve LastInsertId", zap.Error(err))
-	// }
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		s.logger.Warn("SQL CREATE. Could not retrieve LastInsertId", zap.Error(err))
+	}
 
 	// Construct the ToDo object with the assigned ID
 	t := &ToDo{
-		ID: 0,
-		// ID:               int(lastID),
+		ID:               int(lastID),
 		Task:             task,
 		Task_description: description,
 		Due_date:         &date_time,
@@ -204,35 +204,34 @@ func (s *ToDoService) CreateToDo(ctx context.Context, task string, description s
 		// Created_at: ,
 	}
 
-	// s.logger.Info("ToDo created successfully via SQL", zap.String("task", task), zap.Int64("id", lastID))
-	s.logger.Info("ToDo created successfully via SQL", zap.String("task", task), zap.Int64("id", 0))
+	s.logger.Info("SQL CREATE. To Do created successfully via SQL", zap.String("task", task), zap.Int64("id", lastID))
 	return t, nil
 }
 
 // Update existing todo in the database, with the provided todo details.
-func (s *ToDoService) UpdateToDo(ctx context.Context, id *int, task *string, description *string, due_date *string) error {
+func (s *ToDoService) UpdateToDo(ctx context.Context, id int, task string, description string, due_date *time.Time) error {
 	var err error
 	// End result should be "UPDATE todo SET task = ?, task_description = ? WHERE id = ?" if all function parameters are provided
 	params := []string{}
 	args := []any{}
 
-	if task != nil && *task != "" {
+	if len(task) > 0 {
 		params = append(params, "task = ?")
-		args = append(args, *task)
+		args = append(args, task)
 	}
 
-	if description != nil && *description != "" {
+	if len(description) > 0 {
 		params = append(params, "task_description = ?")
-		args = append(args, *description)
+		args = append(args, description)
 	}
 
-	if due_date != nil && *due_date != "" {
+	if due_date != nil {
 		params = append(params, "due_date = ?")
 		args = append(args, *due_date)
 	}
 
 	if len(params) == 0 {
-		s.logger.Warn("insufficient parameters")
+		s.logger.Warn("insufficient parameters", zap.Any("params", params))
 		return fmt.Errorf("insufficient parameters provided")
 	}
 
@@ -245,7 +244,7 @@ func (s *ToDoService) UpdateToDo(ctx context.Context, id *int, task *string, des
 	_, err = s.db.ExecContext(ctx, updateQuery, args...)
 	if err != nil {
 		s.logger.Warn("Failed to update ToDo item using SQL Exec", zap.Error(err),
-			zap.String("task", *task), zap.String("description", *description), zap.Int("id", *id))
+			zap.String("task", task), zap.String("description", description), zap.Int("id", id))
 		return fmt.Errorf("database execution error: %w", err)
 	}
 
