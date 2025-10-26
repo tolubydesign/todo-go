@@ -100,7 +100,7 @@ type ToDo struct {
 	Task             string
 	Task_description string
 	Created_at       time.Time
-	Due_date         time.Time
+	Due_date         *time.Time
 }
 
 // ToDoService defines the business logic methods.
@@ -133,7 +133,6 @@ func (s *ToDoService) GetToDo(ctx context.Context, limit string, page string) ([
 	s.logger.Info("db get todo - close()")
 	defer rows.Close()
 
-	s.logger.Info("db get todo - next()")
 	for rows.Next() {
 		var todo ToDo
 		if err := rows.Scan(&todo.ID, &todo.Task, &todo.Task_description, &todo.Created_at, &todo.Due_date); err != nil {
@@ -148,31 +147,65 @@ func (s *ToDoService) GetToDo(ctx context.Context, limit string, page string) ([
 }
 
 // CreateToDo adds new todo with the provided details.
-func (s *ToDoService) CreateToDo(ctx context.Context, task string, description string) (*ToDo, error) {
-	const insertSQL = "INSERT INTO todo (task, task_description) VALUES (?, ?)"
+func (s *ToDoService) CreateToDo(ctx context.Context, task string, description string, due_date *time.Time) (*ToDo, error) {
+	// const insertSQL = "INSERT INTO todo (task, task_description, due_date) VALUES (?, ?, ?)"
+	params := []string{}
+	args := []any{}
+	marks := []string{}
+
+	// add task param
+	params = append(params, "task")
+	args = append(args, task)
+
+	// add description param
+	params = append(params, "task_description")
+	args = append(args, description)
+
+	// if due_date != nil && *due_date != "" {
+	if due_date != nil {
+		params = append(params, "due_date")
+		args = append(args, *due_date)
+	}
+
+	for i := 0; i < len(args); i++ {
+		marks = append(marks, "?")
+	}
+
+	query := fmt.Sprintf("INSERT INTO todo (%s) VALUES (%s)", strings.Join(params, ", "), strings.Join(marks, ", "))
+
+	s.logger.Info("request structure", zap.String("query", query))
+	var date_time time.Time
+	if due_date != nil {
+		date_time = *due_date
+	}
 
 	// Execute the query
-	result, err := s.db.ExecContext(ctx, insertSQL, task, description)
-	if err != nil {
-		s.logger.Error("Failed to create ToDo item using SQL Exec", zap.Error(err),
-			zap.String("task", task), zap.String("description", description))
-		return nil, fmt.Errorf("database execution error: %w", err)
-	}
+	// result, err := s.db.ExecContext(ctx, insertSQL, task, description)
+	// if err != nil {
+	// 	s.logger.Error("Failed to create ToDo item using SQL Exec", zap.Error(err),
+	// 		zap.String("task", task), zap.String("description", description))
+	// 	return nil, fmt.Errorf("database execution error: %w", err)
+	// }
 
 	// Get the ID of the newly inserted record
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		s.logger.Warn("Could not retrieve LastInsertId", zap.Error(err))
-	}
+	// lastID, err := result.LastInsertId()
+	// if err != nil {
+	// 	s.logger.Warn("Could not retrieve LastInsertId", zap.Error(err))
+	// }
 
 	// Construct the ToDo object with the assigned ID
 	t := &ToDo{
-		ID:               int(lastID),
+		ID: 0,
+		// ID:               int(lastID),
 		Task:             task,
 		Task_description: description,
+		Due_date:         &date_time,
+		// TODO: return created at date
+		// Created_at: ,
 	}
 
-	s.logger.Info("ToDo created successfully via SQL", zap.String("task", task), zap.Int64("id", lastID))
+	// s.logger.Info("ToDo created successfully via SQL", zap.String("task", task), zap.Int64("id", lastID))
+	s.logger.Info("ToDo created successfully via SQL", zap.String("task", task), zap.Int64("id", 0))
 	return t, nil
 }
 
