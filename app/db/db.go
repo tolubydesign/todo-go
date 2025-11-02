@@ -100,7 +100,7 @@ type ToDo struct {
 	Task             string
 	Task_description string
 	Created_at       time.Time
-	Due_date         time.Time
+	Due_date         *time.Time
 }
 
 // ToDoService defines the business logic methods.
@@ -133,7 +133,6 @@ func (s *ToDoService) GetToDo(ctx context.Context, limit string, page string) ([
 	s.logger.Info("db get todo - close()")
 	defer rows.Close()
 
-	s.logger.Info("db get todo - next()")
 	for rows.Next() {
 		var todo ToDo
 		if err := rows.Scan(&todo.ID, &todo.Task, &todo.Task_description, &todo.Created_at, &todo.Due_date); err != nil {
@@ -148,11 +147,41 @@ func (s *ToDoService) GetToDo(ctx context.Context, limit string, page string) ([
 }
 
 // CreateToDo adds new todo with the provided details.
-func (s *ToDoService) CreateToDo(ctx context.Context, task string, description string) (*ToDo, error) {
-	const insertSQL = "INSERT INTO todo (task, task_description) VALUES (?, ?)"
+func (s *ToDoService) CreateToDo(ctx context.Context, task string, description string, due_date *time.Time) (*ToDo, error) {
+	// const insertSQL = "INSERT INTO todo (task, task_description, due_date) VALUES (?, ?, ?)"
+	params := []string{}
+	args := []any{}
+	marks := []string{}
+
+	// add task param
+	params = append(params, "task")
+	args = append(args, task)
+
+	// add description param
+	if len(description) > 0 {
+		params = append(params, "task_description")
+		args = append(args, description)
+	}
+
+	if due_date != nil {
+		params = append(params, "due_date")
+		args = append(args, *due_date)
+	}
+
+	for i := 0; i < len(args); i++ {
+		marks = append(marks, "?")
+	}
+
+	query := fmt.Sprintf("INSERT INTO todo (%s) VALUES (%s)", strings.Join(params, ", "), strings.Join(marks, ", "))
+
+	s.logger.Info("SQL CREATE. request structure", zap.String("query", query), zap.Any("args", args))
+	var date_time time.Time
+	if due_date != nil {
+		date_time = *due_date
+	}
 
 	// Execute the query
-	result, err := s.db.ExecContext(ctx, insertSQL, task, description)
+	result, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		s.logger.Error("Failed to create ToDo item using SQL Exec", zap.Error(err),
 			zap.String("task", task), zap.String("description", description))
@@ -162,7 +191,7 @@ func (s *ToDoService) CreateToDo(ctx context.Context, task string, description s
 	// Get the ID of the newly inserted record
 	lastID, err := result.LastInsertId()
 	if err != nil {
-		s.logger.Warn("Could not retrieve LastInsertId", zap.Error(err))
+		s.logger.Warn("SQL CREATE. Could not retrieve LastInsertId", zap.Error(err))
 	}
 
 	// Construct the ToDo object with the assigned ID
@@ -170,64 +199,67 @@ func (s *ToDoService) CreateToDo(ctx context.Context, task string, description s
 		ID:               int(lastID),
 		Task:             task,
 		Task_description: description,
+		Due_date:         &date_time,
+		// TODO: return created at date
+		// Created_at: ,
 	}
 
-	s.logger.Info("ToDo created successfully via SQL", zap.String("task", task), zap.Int64("id", lastID))
+	s.logger.Info("SQL CREATE. To Do created successfully via SQL", zap.String("task", task), zap.Int64("id", lastID))
 	return t, nil
 }
 
 // Update existing todo in the database, with the provided todo details.
-func (s *ToDoService) UpdateToDo(ctx context.Context, id int, task *string, description *string, due_date *string) error {
+func (s *ToDoService) UpdateToDo(ctx context.Context, id int, task string, description string, due_date *time.Time) error {
 	var err error
 	// End result should be "UPDATE todo SET task = ?, task_description = ? WHERE id = ?" if all function parameters are provided
 	params := []string{}
 	args := []any{}
 
-	if task != nil && *task != "" {
+	if len(task) > 0 {
 		params = append(params, "task = ?")
-		args = append(args, *task)
+		args = append(args, task)
 	}
 
-	if description != nil && *description != "" {
+	if len(description) > 0 {
 		params = append(params, "task_description = ?")
-		args = append(args, *description)
+		args = append(args, description)
 	}
 
-	if due_date != nil && *due_date != "" {
+	if due_date != nil {
 		params = append(params, "due_date = ?")
 		args = append(args, *due_date)
 	}
 
 	if len(params) == 0 {
-		s.logger.Warn("insufficient parameters")
+		s.logger.Warn("insufficient parameters", zap.Any("params", params))
 		return fmt.Errorf("insufficient parameters provided")
 	}
 
 	updateQuery := fmt.Sprintf("UPDATE todo SET %s WHERE id = ?", strings.Join(params, ", "))
 	args = append(args, id)
-	s.logger.Info("update sql query", zap.String("q", updateQuery))
-	s.logger.Info("arguments", zap.Any("args", args))
+	s.logger.Info("UPDATE SERVICE:", zap.String("query", updateQuery))
+	s.logger.Info("UPDATE SERVICE: arguments", zap.Any("args", args))
 
 	// Execute the query
 	_, err = s.db.ExecContext(ctx, updateQuery, args...)
 	if err != nil {
-		s.logger.Error("Failed to update ToDo item using SQL Exec", zap.Error(err),
-			zap.String("task", *task), zap.String("description", *description), zap.Int("id", id))
+		s.logger.Warn("Failed to update ToDo item using SQL Exec", zap.Error(err),
+			zap.String("task", task), zap.String("description", description), zap.Int("id", id))
 		return fmt.Errorf("database execution error: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // RemoveToDo removes task that match provided id and task from SQL database.
-func (s *ToDoService) RemoveToDo(ctx context.Context, id int, task string) error {
+func (s *ToDoService) RemoveToDo(ctx context.Context, id int) error {
 	const removeSQL = "DELETE FROM todo WHERE id = ?"
 
 	// Execute the query
 	result, err := s.db.ExecContext(ctx, removeSQL, id)
 	if err != nil {
 		s.logger.Error("Failed to create ToDo item using SQL Exec", zap.Error(err),
-			zap.Int("id", id), zap.String("task", task))
+			zap.Int("id", id))
 		return fmt.Errorf("database execution error: %w", err)
 	}
 
@@ -237,7 +269,9 @@ func (s *ToDoService) RemoveToDo(ctx context.Context, id int, task string) error
 		log.Fatal(err)
 	}
 
-	s.logger.Info("ToDo removed successfully via SQL", zap.String("task", task), zap.Int64("rows affected", rowsAffected))
+	if rowsAffected > 0 {
+		s.logger.Info("SQL DELETE: item delete", zap.Int("id", id))
+	}
 	return nil
 }
 

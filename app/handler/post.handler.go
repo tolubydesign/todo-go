@@ -3,77 +3,116 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/tolubydesign/todo-go/app/helper"
 	"go.uber.org/zap"
 )
 
 func (h *Handler) PostHandler(w http.ResponseWriter, r *http.Request) {
 	// Log event
-	h.logging.Info("POST Request")
+	h.logging.Info("POST: Request")
 
 	// Set the Content-Type header for JSON body
 	r.Header.Set("Content-Type", "application/json")
 
-	// Already connected to database
-	h.logging.Info("Received request from %s for path: %s", zap.String("remote-addr", r.RemoteAddr), zap.String("path", r.URL.Path))
-
 	// Read the request body
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+		msg := "Invalid body"
+		Response(w, "failed", http.StatusBadRequest, &msg, nil)
 		return
 	}
+	defer r.Body.Close()
 
-	h.logging.Info("able to read body bytes")
+	h.logging.Info("POST: able to read request body bytes", zap.ByteString("bytes", bodyBytes))
 	// Unmarshal the JSON body into something usable
 	var requestBody RequestBody
+
 	err = json.Unmarshal(bodyBytes, &requestBody)
 	if err != nil {
-		http.Error(w, "Error unmarshaling JSON", http.StatusBadRequest)
+		msg := "invalid request body"
+		Response(w, "failed", http.StatusBadRequest, &msg, requestBody)
 		return
 	}
 
-	var todos []RequestBodyToDo
+	if len(requestBody.Todos) == 0 {
+		h.logging.Warn("POST: no todos were provided in the request body")
+		msg := "Request body not provided"
+		Response(w, "failed", http.StatusBadRequest, &msg, nil)
+		return
+	}
+
+	var todos []ResponseBodyToDo
 	if requestBody.Todos != nil {
-		for _, todo := range requestBody.Todos {
-			opCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		for i, todo := range requestBody.Todos {
+			opCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			h.logging.Info("adding todo", zap.String("task", todo.Task), zap.String("description", todo.Description))
-			todo, err := h.service.CreateToDo(opCtx, todo.Task, todo.Description)
-			if err != nil {
-				h.logging.Warn("create todo failure", zap.String("task", todo.Task))
-				// Todo better error handler
-				http.Error(w, "Failure to create a todo", http.StatusBadRequest)
+
+			h.logging.Info("POST: adding todo", zap.String("task", todo.Task), zap.String("description", todo.Description), zap.String("due_date", todo.Due_date))
+
+			// check that provided task name is of type string & exists
+			if len(strings.TrimSpace(todo.Task)) == 0 {
+				msg := "invalid task name provided"
+				Response(w, "failed", http.StatusBadRequest, &msg, todo)
 				return
 			}
 
+			// check that provided due_date is valid
+			var dueDate *time.Time
+			tm, err := helper.IsStringUTC(todo.Due_date, time.RFC3339)
+			if err != nil {
+				// Something went wrong. Can't use the
+				h.logging.Warn("POST: due date provided invalid", zap.String("due_date", todo.Due_date))
+				h.logging.Warn("POST: due date provided invalid. related error", zap.Error(err))
+			} else {
+				// No issues found
+				h.logging.Warn("POST: no errors found", zap.Any("time", tm))
+				// dueDate = todo.Due_date
+				dueDate = &tm
+			}
+
+			h.logging.Info("POST: creating todo. task placement:", zap.Int("int", i), zap.String("task", todo.Task), zap.String("description", todo.Description), zap.String("due_date", todo.Due_date))
+
+			t, err := h.service.CreateToDo(opCtx, todo.Task, todo.Description, dueDate)
+			if err != nil {
+				h.logging.Warn("create todo failure", zap.String("task", todo.Task))
+				msg := fmt.Sprintf("Failure to create a todo '%s'", todo.Task)
+				Response(w, "failed", http.StatusInternalServerError, &msg, nil)
+				return
+			}
+
+			var ts string
+			if dueDate != nil {
+				ts = helper.ConvertTimeToString(*t.Due_date)
+			}
+			create_ts := helper.ConvertTimeToString(t.Created_at)
+
 			// add returning todos with ids
-			todos = append(todos, RequestBodyToDo{
-				ID:          todo.ID,
-				Task:        todo.Task,
-				Description: todo.Task_description,
+			todos = append(todos, ResponseBodyToDo{
+				ID:          &t.ID,
+				Task:        t.Task,
+				Description: &t.Task_description,
+				Due_date:    &ts,
+				Created_at:  create_ts,
 			})
 		}
 	}
 
 	// Marshal the slice into a JSON byte slice
-	toDoJSONData, err := json.Marshal(todos)
+	todoJSON, err := json.Marshal(todos)
 	if err != nil {
-		http.Error(w, "Failure to return added todos", http.StatusInternalServerError)
+		msg := "unable to return added to-dos"
+		Response(w, "failed", http.StatusInternalServerError, &msg, nil)
 		return
 	}
 
-	h.logging.Info("todo json data", zap.ByteString("todo json data", toDoJSONData))
+	h.logging.Info("todo json data", zap.ByteString("todo json data", todoJSON))
 
-	// Send a response back to the client
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	// NOTE. alternative method of returning data in JSON
-	// response := map[string][]RequestBodyToDo{"todos": todos}
-	// json.NewEncoder(w).Encode(response)
-	//
-	w.Write(toDoJSONData)
+	msg := helper.SuccessfulResponseMessage
+	Response(w, "successful", http.StatusOK, &msg, todos)
 }

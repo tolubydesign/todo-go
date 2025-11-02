@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -29,7 +28,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	// validate that page and limit are both int dressed as string
 	limitNum, err := strconv.Atoi(limit) // Atoi returns an int and an error
 	if err != nil {
-		h.logging.Info("limit param is not a number:", zap.String("limit", limit))
+		h.logging.Warn("GET: 'limit' parameter is invalid:", zap.String("limit", limit), zap.Error(err))
 		// default to
 		limit = "10"
 		limitNum = 10
@@ -37,7 +36,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	pageNum, err := strconv.Atoi(page) // Atoi returns an int and an error
 	if err != nil {
-		h.logging.Info("page params is not a number:", zap.String("page", page))
+		h.logging.Warn("GET: 'page' parameter is invalid:", zap.String("page", page), zap.Error(err))
 		// default to
 		page = "0" // = 0
 		pageNum = 0
@@ -54,42 +53,39 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	pageStr := strconv.Itoa(pageNum)
 	limitStr := strconv.Itoa(limitNum)
 
-	h.logging.Info("GET param page:", zap.String("page", page), zap.Int("num", pageNum), zap.String("str", pageStr))
-	h.logging.Info("GET param limit:", zap.String("limit", limit), zap.Int("num", limitNum), zap.String("str", limitStr))
+	h.logging.Info("GET: param page:", zap.String("page", page), zap.Int("num", pageNum), zap.String("str", pageStr))
+	h.logging.Info("GET: param limit:", zap.String("limit", limit), zap.Int("num", limitNum), zap.String("str", limitStr))
 
-	var responseToDos []RequestBodyToDo
+	var responseToDos []ResponseBodyToDo
 	opCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	// handle get with pagination in query
 	todos, err := h.service.GetToDo(opCtx, limitStr, pageStr)
 	if err != nil {
-		h.logging.Warn("get todo failure")
-		// TODO: better error handler
-		http.Error(w, "Failure to get a todos", http.StatusInternalServerError)
+		h.logging.Error("GET: get todo service ", zap.Error(err))
+		msg := "Failure to get a todos"
+		Response(w, "failed", http.StatusInternalServerError, &msg, nil)
 		return
 	}
 
 	for _, todo := range todos {
-		responseToDos = append(responseToDos, RequestBodyToDo{
-			ID:          todo.ID,
+		var ct string
+		if todo.Due_date != nil {
+			ct = todo.Due_date.Format(time.RFC3339)
+		}
+
+		responseToDos = append(responseToDos, ResponseBodyToDo{
+			ID:          &todo.ID,
 			Task:        todo.Task,
-			Description: todo.Task_description,
+			Description: &todo.Task_description,
+			Due_date:    &ct,
 			// Due_date: time.Now().Format(todo.Due_date), // needs work
 		})
 	}
 
-	// // Marshal the slice into a JSON byte slice
-	// marshalTodos, err := json.Marshal(responseToDos)
-	// if err != nil {
-	// 	http.Error(w, "Failure to return added todos", http.StatusInternalServerError)
-	// 	return
-	// }
-	// h.logging.Info("List of todos: ", zap.ByteString("todos", marshalTodos))
-
+	response := map[string][]ResponseBodyToDo{"todos": responseToDos}
+	msg := "request complete"
 	// Send a response back to the client
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	response := map[string][]RequestBodyToDo{"todos": responseToDos}
-	json.NewEncoder(w).Encode(response)
+	Response(w, "successful", http.StatusOK, &msg, response)
 }

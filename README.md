@@ -47,11 +47,7 @@ curl -X POST -H "Content-Type: application/json" -d '{ "todos": [ { "task": "1 t
 
 PATCH Request
 ```sh
-curl -X PATCH -H "Content-Type: application/json" -d '{ "todos": [ { "id": 100, "task": "foo task", "description": "foo description" }, { "id": 101, "task": "foo task" }, { "id": 103, "description": "foop doop" } ] }' "http://localhost:8080/todos"
-# curl -X PATCH "http://localhost:8080/todos" \
-#     --include \
-#     --header "Content-Type: application/json" \ 
-#     -d '{ "todos": [ { "id": "id-number", "task": "updated task information", "description": "updated description information" }, { "id": "id-number", "task": "updated task information", "description": "updated description information" } ] }'
+curl -X PATCH -H "Content-Type: application/json" -d '{ "todos": [ { "id": 100, "task": "foo task", "description": "foo description" }, { "id": 101, "task": "foo task" }, { "id": 103, "description": "description text" } ] }' "http://localhost:8080/todos"
 ```
 
 [Incomplete] DELETE Request 
@@ -114,7 +110,7 @@ $ go run main.go migrate down
   - [x] create docker file to build project
   - [ ] create docker file to run project
   - [x] Dockerize MySQL database
-    - [ ] add due_date RFC3339 timestamp to todo table
+    - [x] add due_date RFC3339 timestamp to todo table
   - [ ] ~~Dockerize redis database for logging~~
 
 - [ ] Development
@@ -134,17 +130,19 @@ $ go run main.go migrate down
     - [x] handle request
     - [ ] add due_date RFC3339 timestamp to todo table
     - [ ] error handling with task with unknown/not-found id
+    - [ ] handle optional due_date RFC3339
     - [x] remove completed bool
-  - [ ] DELETE endpoint
-    - [ ] setup
-    - [ ] handle request
-    - [ ] connect with mysql database
+  - [x] DELETE endpoint
+    - [x] setup
+    - [x] handle request
+    - [x] connect with mysql database
+    - [ ] add due_date RFC3339 timestamp to todo table
   - [x] Migration 
     - [x] up migration
     - [x] down migration
 
-  - [ ] Error handling
-    - [ ] Reusable return functions/struct (better manage request responses)
+  - [x] Error handling
+    - [x] Reusable return functions/struct (better manage request responses)
 
 - [ ] Tests
 
@@ -194,7 +192,7 @@ $ go run main.go migrate down
 - TODO: Future implementation. change pagination based on limit set by user. So if the limit is 20 and the user is on the 3rd page. (2 x 20) We show 20 items that are after the 39th todo
 - Time is clocking down. I wont be able to create tests. Ill have to do it after project is due.
 - Wont have time but I create the CI pipeline later
-- Docker file is incomplete. it builds but doesnt run. may have to hand in without resolving it
+- Docker file is incomplete. it builds but doesn't run. may have to hand in without resolving it
 - Didn't get around to doing the tests.
 - Proper HTTP responses have also not been set.
 
